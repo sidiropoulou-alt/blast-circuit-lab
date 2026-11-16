@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>⚡ BLAST Circuit Lab — Electricity for Kids</title>
+<meta name="description" content="A fun interactive website that teaches kids in grades 2-4 how to build an electrical circuit, with quizzes, fun facts and amazing discoveries." />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>" />
+<link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <div class="header-inner">
+    <div class="brand">
+      <span class="brand-bolt" aria-hidden="true">⚡</span>
+      <div>
+        <h1>BLAST Circuit Lab</h1>
+        <p class="tagline">Build it · Test it · Learn it!</p>
+      </div>
+    </div>
+    <div class="header-tools">
+      <button id="factButton" class="btn btn-small btn-ghost" type="button" title="Show a random fun fact">
+        🎲 Surprise fact!
+      </button>
+      <button id="soundToggle" class="btn btn-small btn-ghost" type="button" aria-pressed="true" title="Turn sound on or off">
+        🔊 Sound: On
+      </button>
+    </div>
+  </div>
+</header>
+
+<nav class="tabs" aria-label="Choose an activity">
+  <div class="tabs-inner" role="tablist">
+    <button class="tab is-active" role="tab" id="tab-build" aria-controls="panel-build" aria-selected="true" data-tab="build">🔌 Build a Circuit</button>
+    <button class="tab" role="tab" id="tab-quiz" aria-controls="panel-quiz" aria-selected="false" data-tab="quiz">❓ Quiz Time</button>
+    <button class="tab" role="tab" id="tab-facts" aria-controls="panel-facts" aria-selected="false" data-tab="facts">🤯 Fun Facts</button>
+    <button class="tab" role="tab" id="tab-discoveries" aria-controls="panel-discoveries" aria-selected="false" data-tab="discoveries">🔎 Amazing Discoveries</button>
+  </div>
+</nav>
+
+<main id="main">
+
+  <!-- ============ BUILD A CIRCUIT ============ -->
+  <section class="panel is-active" id="panel-build" role="tabpanel" aria-labelledby="tab-build">
+
+    <div class="card intro-card">
+      <h2>🔌 What is a circuit?</h2>
+      <p>A <strong>circuit</strong> is a path that electricity travels around. It has to be a <strong>complete loop</strong> — like a racetrack with no holes in it!</p>
+      <ol class="steps">
+        <li><strong>A battery</strong> pushes the electricity. 🔋</li>
+        <li><strong>Wires</strong> carry it around the loop. 〰️</li>
+        <li><strong>A bulb</strong> lights up when the electricity gets there. 💡</li>
+        <li><strong>A switch</strong> can stop the electricity or let it go. 🎚️</li>
+      </ol>
+      <p class="tip">👉 If there is even <em>one</em> gap in the loop, the electricity stops and the bulb goes dark.</p>
+    </div>
+
+    <div class="builder-layout">
+
+      <div class="card tray-card">
+        <h2>🧰 Your parts box</h2>
+        <p class="hint-small">Drag a part onto the board — or tap a part, then tap a circle.</p>
+        <div class="tray" id="tray">
+          <button class="part" type="button" data-part="battery" aria-label="Battery">
+            <span class="part-icon" data-icon="battery"></span>
+            <span class="part-name">Battery</span>
+            <span class="part-count" data-count="battery"></span>
+          </button>
+          <button class="part" type="button" data-part="bulb" aria-label="Light bulb">
+            <span class="part-icon" data-icon="bulb"></span>
+            <span class="part-name">Bulb</span>
+            <span class="part-count" data-count="bulb"></span>
+          </button>
+          <button class="part" type="button" data-part="switch" aria-label="Switch">
+            <span class="part-icon" data-icon="switch"></span>
+            <span class="part-name">Switch</span>
+            <span class="part-count" data-count="switch"></span>
+          </button>
+          <button class="part" type="button" data-part="wire" aria-label="Wire">
+            <span class="part-icon" data-icon="wire"></span>
+            <span class="part-name">Wire</span>
+            <span class="part-count" data-count="wire"></span>
+          </button>
+        </div>
+        <div class="tray-actions">
+          <button class="btn btn-small" id="hintButton" type="button">💡 Hint</button>
+          <button class="btn btn-small btn-warn" id="resetButton" type="button">♻️ Start over</button>
+        </div>
+      </div>
+
+      <div class="card board-card">
+        <h2>🔧 The circuit board</h2>
+
+        <div class="board" id="board">
+          <svg class="board-svg" viewBox="0 0 600 400" preserveAspectRatio="none" aria-hidden="true">
+            <defs>
+              <linearGradient id="loopGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#7f8fa6" />
+                <stop offset="100%" stop-color="#4b5a6e" />
+              </linearGradient>
+            </defs>
+            <path id="loopPath" d="M 124 80 H 476 A 34 34 0 0 1 510 114 V 286 A 34 34 0 0 1 476 320 H 124 A 34 34 0 0 1 90 286 V 114 A 34 34 0 0 1 124 80 Z" fill="none" stroke="url(#loopGrad)" stroke-width="10" stroke-linecap="round" />
+            <path id="loopGlow" d="M 124 80 H 476 A 34 34 0 0 1 510 114 V 286 A 34 34 0 0 1 476 320 H 124 A 34 34 0 0 1 90 286 V 114 A 34 34 0 0 1 124 80 Z" fill="none" stroke="#ffd93b" stroke-width="14" stroke-linecap="round" class="loop-glow" />
+          </svg>
+          <div class="slots" id="slots"></div>
+          <div class="electrons" id="electrons" aria-hidden="true"></div>
+        </div>
+
+        <div class="status" id="status" role="status" aria-live="polite">
+          <span class="status-emoji">🧩</span>
+          <span class="status-text">Pop a part into each circle to build your loop!</span>
+        </div>
+
+        <div class="progress-wrap" aria-hidden="true">
+          <div class="progress-bar"><span id="progressFill"></span></div>
+          <span class="progress-label" id="progressLabel">0 of 6 spots filled</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="panel" id="panel-quiz" role="tabpanel" aria-labelledby="tab-quiz">
+    <div class="card quiz-card">
+      <h2>❓ Quiz Time</h2>
+      <p class="hint-small">Pick the best answer. You'll find out right away if you got it!</p>
+
+      <div class="quiz-head">
+        <span class="pill" id="quizProgress">Question 1 of 8</span>
+        <span class="pill pill-score" id="quizScore">⭐ 0 stars</span>
+      </div>
+
+      <div class="quiz-body" id="quizBody">
+        <h3 class="quiz-question" id="quizQuestion">Loading…</h3>
+        <div class="answers" id="quizAnswers"></div>
+        <div class="feedback" id="quizFeedback" role="status" aria-live="polite"></div>
+        <div class="quiz-actions">
+          <button class="btn btn-next" id="nextQuestion" type="button" hidden>Next question ➡️</button>
+        </div>
+      </div>
+
+      <div class="quiz-result" id="quizResult" hidden>
+        <div class="result-emoji" id="resultEmoji">🏆</div>
+        <h3 id="resultTitle">Great job!</h3>
+        <p id="resultText"></p>
+        <div class="result-stars" id="resultStars"></div>
+        <button class="btn btn-primary" id="restartQuiz" type="button">🔁 Play again</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FUN FACTS ============ -->
+  <section class="panel" id="panel-facts" role="tabpanel" aria-labelledby="tab-facts">
+    <div class="card">
+      <h2>🤯 Fun Facts about Electricity</h2>
+      <p class="hint-small">Tap a card to flip it over and see the surprise!</p>
+    </div>
+    <div class="facts-grid" id="factsGrid"></div>
+  </section>
+
+  <!-- ============ AMAZING DISCOVERIES ============ -->
+  <section class="panel" id="panel-discoveries" role="tabpanel" aria-labelledby="tab-discoveries">
+    <div class="card">
+      <h2>🔎 Amazing Discoveries</h2>
+      <p class="hint-small">People have been figuring out electricity for a very, very long time. Here is the story!</p>
+    </div>
+    <div class="timeline" id="timeline"></div>
+    <div class="card discovery-cta">
+      <h3>🌟 Your turn to discover!</h3>
+      <p>Try the <strong>static electricity</strong> trick: rub a balloon on your hair for 10 seconds, then hold it near tiny paper bits. The paper jumps up! That's electricity you can see — and it's the very same thing the ancient Greeks noticed thousands of years ago.</p>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <p>⚡ Made for young scientists in grades 2–4. Always ask a grown-up before trying electricity experiments — never play with wall sockets!</p>
+</footer>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="js/icons.js"></script>
+<script src="js/content.js"></script>
+<script src="js/circuit.js"></script>
+<script src="js/quiz.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

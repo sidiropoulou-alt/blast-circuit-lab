@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>BLAST Circuit Lab — tests</title>
+<style>
+  body { font: 15px/1.5 Verdana, sans-serif; margin: 0; padding: 14px; background: #f7faff; }
+  h1 { font-size: 18px; }
+  #log { white-space: pre-wrap; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; }
+  .pass { color: #15803d; }
+  .fail { color: #b91c1c; font-weight: 700; }
+  #frame { width: 1000px; height: 900px; border: 2px solid #cbd5e1; background: #fff; }
+  .summary { font-weight: 700; font-size: 16px; padding: 6px 0; }
+</style>
+</head>
+<body>
+<h1>Test run for index.html</h1>
+<div class="summary" id="summary">running…</div>
+<div id="log"></div>
+<iframe id="frame" src="../index.html" title="site under test"></iframe>
+
+<script>
+(function () {
+  "use strict";
+  var out = document.getElementById("log");
+  var passed = 0, failed = 0;
+
+  function log(text, cls) {
+    var div = document.createElement("div");
+    if (cls) div.className = cls;
+    div.textContent = text;
+    out.appendChild(div);
+  }
+  function check(name, ok, detail) {
+    if (ok) { passed++; log("PASS  " + name); }
+    else { failed++; log("FAIL  " + name + (detail ? "  -> " + detail : ""), "fail"); }
+  }
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  var frame = document.getElementById("frame");
+
+  frame.addEventListener("load", function () {
+    setTimeout(run, 400);
+  });
+
+  async function run() {
+    var win = frame.contentWindow;
+    var doc = frame.contentDocument;
+
+    if (!win || !doc) { check("iframe is reachable", false); finish(); return; }
+
+    check("page title is right", /BLAST Circuit Lab/.test(doc.title), doc.title);
+    check("the header shows the site name",
+          /BLAST Circuit Lab/.test((doc.querySelector("h1") || {}).textContent || ""));
+    check("nothing still says the old name",
+          !/Sparky/.test(doc.documentElement.innerHTML));
+    check("no error banner on load", !doc.getElementById("errorBar"));
+
+    /* ---------- structure ---------- */
+    var slots = doc.querySelectorAll(".slot");
+    check("six spots on the board", slots.length === 6, "found " + slots.length);
+    var parts = doc.querySelectorAll(".part");
+    check("four parts in the box", parts.length === 4, "found " + parts.length);
+    check("eight quiz questions in the data", win.BlastContent.quiz.length === 8);
+    check("eight fun-fact cards", doc.querySelectorAll(".fact").length === 8);
+    check("eight discoveries on the timeline", doc.querySelectorAll(".discovery").length === 8);
+    check("four tabs", doc.querySelectorAll(".tab").length === 4);
+
+    /* ---------- spots really are clickable (nothing on top of them) ---------- */
+    var board = doc.getElementById("board");
+    board.scrollIntoView({ block: "center" });
+    await sleep(120);
+    var blocked = [];
+    for (var i = 0; i < slots.length; i++) {
+      var r = slots[i].getBoundingClientRect();
+      var hit = doc.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      if (!(hit === slots[i] || slots[i].contains(hit))) {
+        blocked.push(i + 1 + ":" + (hit ? hit.className : "null"));
+      }
+    }
+    check("every spot is the top element at its centre", blocked.length === 0, blocked.join(", "));
+
+    /* ---------- the spots sit on the loop, inside the board ---------- */
+    var boardRect = board.getBoundingClientRect();
+    var outside = [];
+    for (var s = 0; s < slots.length; s++) {
+      var sr = slots[s].getBoundingClientRect();
+      if (sr.left < boardRect.left - 2 || sr.right > boardRect.right + 2 ||
+          sr.top < boardRect.top - 2 || sr.bottom > boardRect.bottom + 2) outside.push(s + 1);
+    }
+    check("every spot stays inside the board", outside.length === 0, "outside: " + outside.join(", "));
+
+    var path = doc.getElementById("loopPath");
+    check("the loop path has a real length", path.getTotalLength() > 800, path.getTotalLength());
+
+    /* ---------- building the circuit by clicking, like a child would ---------- */
+    function statusText() { return doc.querySelector("#status .status-text").textContent; }
+    function progress() { return doc.getElementById("progressLabel").textContent; }
+    function partBtn(type) { return doc.querySelector('.part[data-part="' + type + '"]'); }
+    function slot(i) { return doc.querySelectorAll(".slot")[i]; }
+
+    check("starts empty", /0 of 6 spots filled/.test(progress()), progress());
+    check("empty board is not live", !board.classList.contains("is-live"));
+
+    partBtn("battery").click();
+    check("tapping a part selects it", partBtn("battery").getAttribute("aria-pressed") === "true");
+    slot(0).click();
+    check("the battery lands in spot 1", slot(0).classList.contains("is-filled"));
+    check("spot 1 now holds a battery", slot(0).dataset.part === "battery", slot(0).dataset.part);
+    check("progress counts it", /1 of 6 spots filled/.test(progress()), progress());
+    check("status lists what is still missing", /Still to add/.test(statusText()), statusText());
+
+    // one part of each kind + 3 wires
+    partBtn("bulb").click();  slot(1).click();
+    partBtn("switch").click(); slot(2).click();
+    partBtn("wire").click();  slot(3).click();
+    partBtn("wire").click();  slot(4).click();
+    partBtn("wire").click();  slot(5).click();
+
+    check("all six spots are filled", doc.querySelectorAll(".slot.is-filled").length === 6);
+    check("progress is full", /6 of 6 spots filled/.test(progress()), progress());
+    check("no wires left over", /all used/.test(partBtn("wire").textContent), partBtn("wire").textContent);
+    check("loop complete but switch still open", /close it/.test(statusText()), statusText());
+    check("board is not live yet", !board.classList.contains("is-live"));
+
+    // clicking the switch closes it
+    var sw = slot(2);
+    check("switch spot is marked as a switch", sw.dataset.part === "switch");
+    sw.click();
+    await sleep(80);
+    check("closing the switch lights the circuit", board.classList.contains("is-live"));
+    check("the bulb is glowing", slot(1).classList.contains("is-lit"));
+    check("status celebrates", /WOW/.test(statusText()), statusText());
+    check("the loop glows", doc.getElementById("loopGlow").classList.contains("loop-glow"));
+
+    var dot = doc.querySelector(".electron");
+    var dotLeft1 = dot.style.left;
+    await sleep(300);
+    check("electrons are moving around the loop", dot.style.left !== "" && dot.style.left !== dotLeft1,
+          dotLeft1 + " -> " + dot.style.left);
+
+    // opening the switch stops it again
+    sw.click();
+    await sleep(60);
+    check("opening the switch turns the light off", !board.classList.contains("is-live"));
+    check("the bulb stops glowing", !slot(1).classList.contains("is-lit"));
+    sw.click();   // close it again for the next test
+
+    // taking a part out
+    var removeBtn = slot(0).querySelector(".slot-remove");
+    check("a filled spot has a remove button", !!removeBtn);
+    removeBtn.click();
+    check("removing empties the spot", !slot(0).classList.contains("is-filled"));
+    check("removing breaks the circuit", !board.classList.contains("is-live"));
+    check("progress goes back down", /5 of 6 spots filled/.test(progress()), progress());
+
+    // start over
+    doc.getElementById("resetButton").click();
+    check("start over clears the board", doc.querySelectorAll(".slot.is-filled").length === 0);
+    check("start over resets progress", /0 of 6 spots filled/.test(progress()), progress());
+
+    /* ---------- the quiz ---------- */
+    var quizData = win.BlastContent.quiz;
+    var score = 0;
+    for (var q = 0; q < quizData.length; q++) {
+      var qText = doc.getElementById("quizQuestion").textContent;
+      if (q === 0) check("quiz shows the first question", qText === quizData[0].q, qText);
+      var answers = doc.querySelectorAll("#quizAnswers .answer");
+      if (q === 0) check("three answers offered", answers.length === 3, answers.length);
+
+      if (q === 1 || q === 2) {
+        // answer two of them wrongly on purpose, so we end on 6 of 8 (two stars)
+        var wrong = (quizData[q].correct + 1) % 3;
+        answers[wrong].click();
+        await sleep(40);
+        check("a wrong answer is marked wrong (question " + (q + 1) + ")",
+              answers[wrong].classList.contains("is-wrong"));
+        check("the right answer is shown (question " + (q + 1) + ")",
+              answers[quizData[q].correct].classList.contains("is-correct"));
+        check("feedback explains it", /answer is/.test(doc.getElementById("quizFeedback").textContent));
+      } else {
+        answers[quizData[q].correct].click();
+        await sleep(40);
+        if (q === 0) {
+          score++;
+          check("a right answer is marked right", answers[quizData[0].correct].classList.contains("is-correct"));
+          check("the star counter goes up", /1 star/.test(doc.getElementById("quizScore").textContent),
+                doc.getElementById("quizScore").textContent);
+          check("feedback says yes", /Yes!/.test(doc.getElementById("quizFeedback").textContent));
+        } else {
+          score++;
+        }
+        check("answers lock after answering (question " + (q + 1) + ")",
+              doc.querySelector("#quizAnswers .answer").disabled === true);
+      }
+      doc.getElementById("nextQuestion").click();
+      await sleep(40);
+    }
+
+    check("quiz reached the results screen", doc.getElementById("quizResult").hidden === false);
+    check("quiz counted 6 of 8 right", /6 out of 8/.test(doc.getElementById("resultText").textContent),
+          doc.getElementById("resultText").textContent);
+    check("quiz shows two of three stars for 6/8",
+          doc.querySelectorAll("#resultStars .star-off").length === 1 &&
+          doc.querySelectorAll("#resultStars .star-on").length === 2,
+          doc.getElementById("resultStars").innerHTML);
+    check("the 2-star message is the friendly one",
+          /Great work/.test(doc.getElementById("resultTitle").textContent),
+          doc.getElementById("resultTitle").textContent);
+
+    doc.getElementById("restartQuiz").click();
+    check("play again restarts at question 1",
+          /Question 1 of 8/.test(doc.getElementById("quizProgress").textContent),
+          doc.getElementById("quizProgress").textContent);
+    check("play again resets the score", /0 stars/.test(doc.getElementById("quizScore").textContent));
+
+    /* ---------- tabs, facts, timeline, sound ---------- */
+    var factsTab = doc.getElementById("tab-facts");
+    factsTab.click();
+    check("tapping a tab activates it", factsTab.classList.contains("is-active"));
+    check("the facts panel opens", doc.getElementById("panel-facts").classList.contains("is-active"));
+    check("the build panel closes", !doc.getElementById("panel-build").classList.contains("is-active"));
+
+    var card = doc.querySelector(".fact");
+    card.click();
+    check("a fact card flips over", card.classList.contains("is-flipped"));
+
+    doc.getElementById("tab-build").click();
+    check("we can go back to the builder", doc.getElementById("panel-build").classList.contains("is-active"));
+
+    doc.getElementById("soundToggle").click();
+    check("sound can be switched off", /Off/.test(doc.getElementById("soundToggle").textContent),
+          doc.getElementById("soundToggle").textContent);
+    check("sound really is off inside the app", win.BlastSound.isOn() === false);
+    doc.getElementById("soundToggle").click();
+    check("sound can be switched back on", win.BlastSound.isOn() === true);
+
+    /* ---------- things a small hand has to be able to tap (44px or more) ---------- */
+    function measure(selector, label, min) {
+      var nodes = doc.querySelectorAll(selector);
+      var small = [];
+      var checked = 0;
+      for (var i = 0; i < nodes.length; i++) {
+        if (!nodes[i].offsetParent && nodes[i].offsetWidth === 0) continue;  // hidden
+        var r = nodes[i].getBoundingClientRect();
+        if (r.width === 0 && r.height === 0) continue;
+        checked++;
+        if (r.height < min || r.width < min) {
+          small.push(Math.round(r.width) + "x" + Math.round(r.height));
+        }
+      }
+      check(label + " are at least " + min + "px (checked " + checked + ")",
+            checked > 0 && small.length === 0, small.join(", "));
+    }
+
+    doc.getElementById("tab-build").click();
+    measure(".slot", "board spots", 44);
+    measure(".part", "parts-box buttons", 44);
+    measure(".tab", "tab buttons", 44);
+    measure(".btn", "toolbar buttons", 44);
+    doc.getElementById("tab-facts").click();
+    measure(".fact", "fun-fact cards", 44);
+    doc.getElementById("tab-quiz").click();
+    measure(".answer", "quiz answer buttons", 44);
+    doc.getElementById("tab-discoveries").click();
+    measure(".discovery", "discovery cards", 44);
+    doc.getElementById("tab-build").click();
+
+    /* ---------- it has to fit a small phone screen ---------- */
+    var startWidth = frame.style.width;
+    frame.style.width = "360px";
+    await sleep(350);
+    var overflow = doc.documentElement.scrollWidth - win.innerWidth;
+    var wide = [];
+    if (overflow > 1) {
+      var all = doc.querySelectorAll("body *");
+      for (var w = 0; w < all.length && wide.length < 6; w++) {
+        var wr = all[w].getBoundingClientRect();
+        if (wr.right > win.innerWidth + 1 && wr.width > 0) {
+          wide.push((all[w].id ? "#" + all[w].id : all[w].className || all[w].tagName) +
+                    "(" + Math.round(wr.right) + ")");
+        }
+      }
+    }
+    check("no sideways scrolling at 360px wide", overflow <= 1,
+          overflow + "px too wide: " + wide.join(", "));
+    var boardBox = board.getBoundingClientRect();
+    check("the board still fits a phone screen", boardBox.width <= win.innerWidth,
+          Math.round(boardBox.width) + " > " + win.innerWidth);
+    var slotSmall = 0;
+    for (var k = 0; k < slots.length; k++) {
+      var kr = slots[k].getBoundingClientRect();
+      if (kr.width < 44 || kr.height < 44) slotSmall++;
+      if (kr.left < -1 || kr.right > win.innerWidth + 1) slotSmall++;
+    }
+    check("spots stay big enough and on screen at 360px", slotSmall === 0, slotSmall + " problems");
+    frame.style.width = startWidth;
+    await sleep(150);
+
+    check("no error banner appeared during the whole run", !doc.getElementById("errorBar"));
+    finish();
+  }
+
+  function finish() {
+    var summary = document.getElementById("summary");
+    summary.textContent = failed === 0
+      ? "ALL TESTS PASSED (" + passed + " checks)"
+      : failed + " FAILED of " + (passed + failed) + " checks";
+    summary.style.color = failed === 0 ? "#15803d" : "#b91c1c";
+    log("");
+    log(failed === 0 ? "RESULT: ALL TESTS PASSED (" + passed + " checks)" : "RESULT: " + failed + " FAILED");
+  }
+})();
+</script>
+</body>
+</html>
